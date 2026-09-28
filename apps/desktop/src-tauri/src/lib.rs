@@ -1,13 +1,13 @@
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use serde::Serialize;
-use std::{collections::HashMap, fs, io::{Read, Write}, path::{Component, Path, PathBuf}, sync::{atomic::{AtomicU32, Ordering}, Mutex}};
+use std::{collections::HashMap, fs, io::{Read, Write}, path::{Component, Path, PathBuf}, sync::{atomic::{AtomicU32, Ordering}, Arc, Mutex}};
 use tauri::{ipc::Channel, State};
 
 #[derive(Default)]
 struct WorkspaceState(Mutex<Option<PathBuf>>);
 #[derive(Default)]
-struct TerminalState { next: AtomicU32, writers: Mutex<HashMap<u32, Box<dyn Write + Send>>> }
+struct TerminalSession { writer: Box<dyn Write + Send>, master: Box<dyn portable_pty::MasterPty + Send>, child: Box<dyn portable_pty::Child + Send + Sync> }\n#[derive(Default)]\nstruct TerminalState { next: AtomicU32, sessions: Mutex<HashMap<u32, TerminalSession>> }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -47,7 +47,7 @@ fn mime_for(path:&Path)->&'static str{match path.extension().and_then(|x|x.to_st
 #[tauri::command] fn restore_workspace(state:State<WorkspaceState>)->Result<Option<WorkspacePayload>,String>{let Some(home)=std::env::var_os("HOME") else{return Ok(None)};let marker=PathBuf::from(home).join(".oqera-last-workspace");let Ok(raw)=fs::read_to_string(marker) else{return Ok(None)};let root=PathBuf::from(raw.trim());if !root.is_dir(){return Ok(None)}let root=root.canonicalize().map_err(|e|e.to_string())?;*state.0.lock().map_err(|_|"Workspace state unavailable".to_string())?=Some(root);payload(&state).map(Some)}
 #[tauri::command] fn refresh_workspace(state:State<WorkspaceState>)->Result<WorkspacePayload,String>{payload(&state)}
 #[tauri::command] fn read_workspace_file(path:String,state:State<WorkspaceState>)->Result<String,String>{let p=existing_path(&state,&path)?;let bytes=fs::read(p).map_err(|e|e.to_string())?;if bytes.len()>5*1024*1024{return Err("File is larger than the 5 MB editor limit".into())}if bytes.iter().take(8192).any(|b|*b==0){return Err("Binary file".into())}String::from_utf8(bytes).map_err(|_|"Binary file".into())}
-#[tauri::command] fn inspect_workspace_file(path:String,state:State<WorkspaceState>)->Result<FilePreview,String>{let p=existing_path(&state,&path)?;let meta=fs::metadata(&p).map_err(|e|e.to_string())?;let mime=mime_for(&p).to_string();let is_image=mime.starts_with("image/");if is_image&&meta.len()<=10*1024*1024{let bytes=fs::read(&p).map_err(|e|e.to_string())?;return Ok(FilePreview{kind:"image",mime:mime.clone(),size:meta.len(),data_url:Some(format!("data:{};base64,{}",mime,STANDARD.encode(bytes)))})}let mut file=fs::File::open(&p).map_err(|e|e.to_string())?;let mut head=vec![0;8192];let n=file.read(&mut head).map_err(|e|e.to_string())?;head.truncate(n);let binary=head.iter().any(|b|*b==0)||std::str::from_utf8(&head).is_err();Ok(FilePreview{kind:if binary{"binary"}else{"text"},mime,size:meta.len(),data_url:None})}
+#[tauri::command] fn inspect_workspace_file(path:String,state:State<WorkspaceState>)->Result<FilePreview,String>{let p=existing_path(&state,&path)?;let meta=fs::metadata(&p).map_err(|e|e.to_string())?;let mime=mime_for(&p).to_string();let is_image=mime.starts_with("image/");if is_image&&meta.len()<=25*1024*1024{let bytes=fs::read(&p).map_err(|e|e.to_string())?;return Ok(FilePreview{kind:"image",mime:mime.clone(),size:meta.len(),data_url:Some(format!("data:{};base64,{}",mime,STANDARD.encode(bytes)))})}let mut file=fs::File::open(&p).map_err(|e|e.to_string())?;let mut head=vec![0;8192];let n=file.read(&mut head).map_err(|e|e.to_string())?;head.truncate(n);let binary=head.iter().any(|b|*b==0)||std::str::from_utf8(&head).is_err();Ok(FilePreview{kind:if binary{"binary"}else{"text"},mime,size:meta.len(),data_url:None})}
 #[tauri::command] fn save_workspace_file(path:String,content:String,state:State<WorkspaceState>)->Result<(),String>{let p=existing_path(&state,&path)?;if !p.is_file(){return Err("Only files can be saved".into())}fs::write(p,content).map_err(|e|e.to_string())}
 #[tauri::command] fn create_workspace_file(path:String,state:State<WorkspaceState>)->Result<(),String>{let p=new_path(&state,&path)?;if p.exists(){return Err("A file or folder with that name already exists".into())}fs::File::create(p).map(|_|()).map_err(|e|e.to_string())}
 #[tauri::command] fn create_workspace_folder(path:String,state:State<WorkspaceState>)->Result<(),String>{let p=new_path(&state,&path)?;if p.exists(){return Err("A file or folder with that name already exists".into())}fs::create_dir(p).map_err(|e|e.to_string())}
@@ -66,4 +66,34 @@ fn terminal_start(on_data:Channel<String>,workspace:State<WorkspaceState>,termin
 #[tauri::command] fn terminal_write(id:u32,data:String,terminals:State<TerminalState>)->Result<(),String>{let mut map=terminals.writers.lock().map_err(|_|"Terminal state unavailable".to_string())?;let w=map.get_mut(&id).ok_or("Terminal session not found")?;w.write_all(data.as_bytes()).and_then(|_|w.flush()).map_err(|e|e.to_string())}
 
 #[cfg_attr(mobile,tauri::mobile_entry_point)]
-pub fn run(){tauri::Builder::default().manage(WorkspaceState::default()).manage(TerminalState::default()).plugin(tauri_plugin_opener::init()).invoke_handler(tauri::generate_handler![open_workspace,restore_workspace,refresh_workspace,read_workspace_file,inspect_workspace_file,save_workspace_file,create_workspace_file,create_workspace_folder,rename_workspace_entry,delete_workspace_entry,search_workspace,terminal_start,terminal_write]).run(tauri::generate_context!()).expect("error while running Oqera");}
+pub fn run(){tauri::Builder::default().manage(WorkspaceState::default()).manage(TerminalState::default()).plugin(tauri_plugin_opener::init()).invoke_handler(tauri::generate_handler![open_workspace,restore_workspace,refresh_workspace,read_workspace_file,inspect_workspace_file,save_workspace_file,create_workspace_file,create_workspace_folder,rename_workspace_entry,delete_workspace_entry,search_workspace,terminal_start,terminal_write,terminal_resize,terminal_close]).run(tauri::generate_context!()).expect("error while running Oqera");}#[tauri::command]
+fn terminal_start(on_data:Channel<String>,workspace:State<WorkspaceState>,terminals:State<TerminalState>)->Result<u32,String>{
+ let pair=native_pty_system().openpty(PtySize{rows:24,cols:100,pixel_width:0,pixel_height:0}).map_err(|e|e.to_string())?;
+ let shell=std::env::var("SHELL").unwrap_or_else(|_|"/bin/zsh".into());
+ let mut cmd=CommandBuilder::new(shell);cmd.arg("-l");if let Ok(root)=root_path(&workspace){cmd.cwd(root)}
+ let child=pair.slave.spawn_command(cmd).map_err(|e|e.to_string())?;
+ let mut reader=pair.master.try_clone_reader().map_err(|e|e.to_string())?;
+ let writer=pair.master.take_writer().map_err(|e|e.to_string())?;
+ let id=terminals.next.fetch_add(1,Ordering::Relaxed)+1;
+ terminals.sessions.lock().map_err(|_|"Terminal state unavailable".to_string())?.insert(id,TerminalSession{writer,master:pair.master,child});
+ std::thread::spawn(move||{let mut buf=[0u8;4096];loop{match reader.read(&mut buf){Ok(0)|Err(_)=>break,Ok(n)=>{if on_data.send(String::from_utf8_lossy(&buf[..n]).to_string()).is_err(){break}}}}});
+ Ok(id)
+}
+#[tauri::command]
+fn terminal_write(id:u32,data:String,terminals:State<TerminalState>)->Result<(),String>{
+ let mut sessions=terminals.sessions.lock().map_err(|_|"Terminal state unavailable".to_string())?;
+ let session=sessions.get_mut(&id).ok_or("Terminal session not found")?;
+ session.writer.write_all(data.as_bytes()).and_then(|_|session.writer.flush()).map_err(|e|e.to_string())
+}
+#[tauri::command]
+fn terminal_resize(id:u32,cols:u16,rows:u16,terminals:State<TerminalState>)->Result<(),String>{
+ let sessions=terminals.sessions.lock().map_err(|_|"Terminal state unavailable".to_string())?;
+ let session=sessions.get(&id).ok_or("Terminal session not found")?;
+ session.master.resize(PtySize{rows:rows.max(1),cols:cols.max(1),pixel_width:0,pixel_height:0}).map_err(|e|e.to_string())
+}
+#[tauri::command]
+fn terminal_close(id:u32,terminals:State<TerminalState>)->Result<(),String>{
+ if let Some(mut session)=terminals.sessions.lock().map_err(|_|"Terminal state unavailable".to_string())?.remove(&id){let _=session.child.kill();}
+ Ok(())
+}
+
