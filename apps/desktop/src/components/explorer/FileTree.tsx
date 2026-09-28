@@ -1,0 +1,6 @@
+import { useState } from "react";
+import type { FileNode } from "../../types/workspace";
+import { ChevronIcon, FileIcon, FolderIcon } from "../../icons";
+export function FileTree({nodes,onOpen}:{nodes:FileNode[];onOpen:(node:FileNode)=>void}){return <div className="file-tree">{nodes.map(n=><TreeNode key={n.path} node={n} depth={0} onOpen={onOpen}/>)}</div>}
+function TreeNode({node,depth,onOpen}:{node:FileNode;depth:number;onOpen:(n:FileNode)=>void}){const [open,setOpen]=useState(depth<1);const folder=node.kind==="directory";return <><button className="tree-row" style={{paddingInlineStart:8+depth*14}} onClick={()=>folder?setOpen(!open):onOpen(node)} title={node.path}>{folder?<span className={"chevron "+(open?"open":"")}><ChevronIcon/></span>:<span className="chevron-spacer"/>}{folder?<FolderIcon open={open}/>:<FileIcon name={node.name}/>}<span className="tree-name">{node.name}</span></button>{folder&&open&&node.children?<TreeNodeList nodes={node.children} depth={depth+1} onOpen={onOpen}/>:null}</>}
+function TreeNodeList({nodes,depth,onOpen}:{nodes:FileNode[];depth:number;onOpen:(n:FileNode)=>void}){return <>{nodes.map(n=><TreeNode key={n.path} node={n} depth={depth} onOpen={onOpen}/>)}</>}
