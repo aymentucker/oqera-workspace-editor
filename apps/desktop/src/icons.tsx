@@ -12,3 +12,9 @@ export const ChevronIcon=(p:P)=><S size={14} {...p}><path d="m9 6 6 6-6 6"/></S>
 export const CloseIcon=(p:P)=><S size={14} {...p}><path d="m7 7 10 10M17 7 7 17"/></S>;
 export const FolderIcon=({open=false,...p}:P&{open?:boolean})=><S size={16} {...p}><path d={open?"M3.5 8.5h17l-2 10h-13z":"M3.5 6.5h6l2 2h9v10h-17z"}/></S>;
 export const FileIcon=({name,...p}:P&{name?:string})=><S size={15} {...p}><path d="M6 3.5h8l4 4v13H6z"/><path d="M14 3.5v4h4"/>{name?.endsWith(".tsx")||name?.endsWith(".ts")?<path d="M8.5 14h7"/>:null}</S>;
+
+export const NewFileIcon=(p:P)=><S size={16} {...p}><path d="M5 3.5h8l4 4v13H5z"/><path d="M13 3.5v4h4M8 14h6M11 11v6"/></S>;
+export const NewFolderIcon=(p:P)=><S size={16} {...p}><path d="M3.5 6.5h6l2 2h9v10h-17z"/><path d="M9 13.5h6M12 10.5v6"/></S>;
+export const RefreshIcon=(p:P)=><S size={16} {...p}><path d="M19 8a7 7 0 1 0 1 6"/><path d="M19 3v5h-5"/></S>;
+export const CommandIcon=(p:P)=><S size={16} {...p}><path d="M9 7H6.5a2.5 2.5 0 1 1 2.5-2.5V19a2.5 2.5 0 1 1-2.5-2.5H17.5A2.5 2.5 0 1 1 15 19V4.5A2.5 2.5 0 1 1 17.5 7z"/></S>;
+export const ImageIcon=(p:P)=><S size={18} {...p}><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="m5.5 17 4.5-4 3 2.5 2.5-2 3 3"/></S>;
