@@ -1,9 +1,12 @@
-import { useMemo, useState } from "react";
-import { OqeraIcon, ProjectIcon, SearchIcon, GitIcon, IntelligenceIcon, TerminalIcon, SettingsIcon, CloseIcon } from "./icons";
+import { useEffect, useMemo, useState } from "react";
+import { OqeraIcon, ProjectIcon, SearchIcon, GitIcon, IntelligenceIcon, TerminalIcon, SettingsIcon, CloseIcon, NewFileIcon, NewFolderIcon, RefreshIcon } from "./icons";
 import { FileTree, type ExplorerAction } from "./components/explorer/FileTree";
 import { CodeEditor } from "./components/editor/CodeEditor";
+import { FilePreview } from "./components/editor/FilePreview";
+import { TerminalPanel } from "./components/terminal/TerminalPanel";
+import { CommandPalette } from "./components/command/CommandPalette";
 import { oqera } from "./lib/oqera";
-import type { EditorTab, FileNode, Workspace } from "./types/workspace";
+import type { EditorTab, FileNode, FilePreview as PreviewData, Workspace } from "./types/workspace";
 
 type Locale = "en" | "ar";
 type EntryDialog = { mode: "newFile" | "newFolder" | "rename"; parent: string; node?: FileNode; value: string } | null;
@@ -26,16 +29,21 @@ export function App() {
   const [closeCandidate, setCloseCandidate] = useState<string | null>(null);
   const [entryDialog, setEntryDialog] = useState<EntryDialog>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<FileNode | null>(null);
+  const [preview, setPreview] = useState<{path:string;name:string;data:PreviewData}|null>(null);
+  const [palette, setPalette] = useState<"quick"|"command"|"search"|null>(null);
 
   const t = copy[locale], rtl = locale === "ar";
   const activeTab = useMemo(() => tabs.find((x) => x.path === active) ?? null, [tabs, active]);
   const dirty = activeTab ? activeTab.content !== activeTab.savedContent : false;
 
+  useEffect(() => { void oqera.workspace.restore().then((last) => { if (last) setWorkspace(last); }).catch(() => undefined); }, []);
+  useEffect(() => { const key=(e:KeyboardEvent)=>{ if(!(e.metaKey||e.ctrlKey))return; const k=e.key.toLowerCase(); if(k==="p"){e.preventDefault();setPalette("quick")} if(k==="k"){e.preventDefault();setPalette("command")} if(k==="f"&&e.shiftKey){e.preventDefault();setPalette("search")} }; window.addEventListener("keydown",key); return()=>window.removeEventListener("keydown",key); }, []);
+
   async function openWorkspace() {
     setBusy(true); setError(null);
     try {
       const next = await oqera.workspace.open();
-      if (next) { setWorkspace(next); setTabs([]); setActive(null); }
+      if (next) { setWorkspace(next); setTabs([]); setActive(null); setPreview(null); }
     } catch (e) { setError(String(e)); } finally { setBusy(false); }
   }
 
@@ -51,7 +59,10 @@ export function App() {
     if (existing) { setActive(node.path); return; }
     setError(null);
     try {
+      const info = await oqera.fs.inspect(node.path);
+      if (info.kind !== "text") { setPreview({path:node.path,name:node.name,data:info}); setActive(null); return; }
       const content = await oqera.fs.readFile(node.path);
+      setPreview(null);
       setTabs((old) => [...old, { path: node.path, name: node.name, content, savedContent: content }]);
       setActive(node.path);
     } catch (e) { setError(String(e)); }
@@ -146,11 +157,11 @@ export function App() {
     </header>
 
     <section className="workspace">
-      <nav className="activitybar"><Tool label={t.explorer}><ProjectIcon/></Tool><Tool label={t.search}><SearchIcon/></Tool><Tool label={t.git}><GitIcon/></Tool><Tool label={t.intelligence}><IntelligenceIcon/></Tool><Tool label={t.runtime}><TerminalIcon/></Tool></nav>
+      <nav className="activitybar"><Tool label={t.explorer}><ProjectIcon/></Tool><Tool label={t.search} onClick={()=>setPalette("search")}><SearchIcon/></Tool><Tool label={t.git}><GitIcon/></Tool><Tool label={t.intelligence}><IntelligenceIcon/></Tool><Tool label={t.runtime}><TerminalIcon/></Tool></nav>
       <aside className="sidebar">
         <div className="panel-heading">
           <span>{workspace?.name.toUpperCase() ?? t.project}</span>
-          {workspace ? <div className="explorer-actions"><button onClick={() => newAtRoot("newFile")} title="New File">+F</button><button onClick={() => newAtRoot("newFolder")} title="New Folder">+D</button><button onClick={() => void refreshWorkspace()} title="Refresh">↻</button></div> : null}
+          {workspace ? <div className="explorer-actions"><button onClick={() => newAtRoot("newFile")} title="New File" aria-label="New File"><NewFileIcon/></button><button onClick={() => newAtRoot("newFolder")} title="New Folder" aria-label="New Folder"><NewFolderIcon/></button><button onClick={() => void refreshWorkspace()} title="Refresh" aria-label="Refresh"><RefreshIcon/></button></div> : null}
         </div>
         {workspace ? <FileTree nodes={workspace.entries} onOpen={openFile} onAction={explorerAction}/> : <div className="empty-side"><ProjectIcon/><span>{t.empty}</span><button onClick={openWorkspace} disabled={busy}>{busy ? t.opening : t.open}</button></div>}
       </aside>
@@ -166,7 +177,7 @@ export function App() {
           </button>;
         }) : <div className="tab active">Welcome</div>}</div>
         {error ? <div className="error-banner">{error}<button onClick={() => setError(null)}>×</button></div> : null}
-        {activeTab ? <><div className="breadcrumb" dir="ltr">{workspace?.name} / {activeTab.path}</div><CodeEditor key={activeTab.path} tab={activeTab} onChange={(value) => setTabs((old) => old.map((x) => x.path === activeTab.path ? { ...x, content:value } : x))} onSave={save}/></> :
+        {activeTab ? <><div className="breadcrumb" dir="ltr">{workspace?.name} / {activeTab.path}</div><CodeEditor key={activeTab.path} tab={activeTab} onChange={(value) => setTabs((old) => old.map((x) => x.path === activeTab.path ? { ...x, content:value } : x))} onSave={save}/></> : preview ? <><div className="breadcrumb" dir="ltr">{workspace?.name} / {preview.path}</div><FilePreview name={preview.name} preview={preview.data}/></> :
           <div className="welcome"><OqeraIcon size={54}/><h1>Oqera</h1><p>{t.empty}</p><button className="primary" onClick={openWorkspace} disabled={busy}>{busy ? t.opening : t.open}</button><div className="hint"><kbd>⌘</kbd><kbd>K</kbd><span>Command Center</span></div></div>}
       </section>
     </section>
@@ -186,7 +197,9 @@ export function App() {
       <div className="dialog-actions"><button onClick={() => setDeleteCandidate(null)}>Cancel</button><button className="danger-button" onClick={() => void confirmDelete()}>Delete</button></div>
     </Modal> : null}
 
-    <section className="bottom"><div className="bottom-tabs"><span className="active">{t.terminal}</span><span>{t.problems}</span><span>{t.output}</span><span>{t.tests}</span></div><div className="terminal">$ <span className="muted">Oqera terminal will appear here.</span></div></section>
+    {palette&&workspace?<CommandPalette mode={palette} nodes={workspace.entries} onClose={()=>setPalette(null)} onOpen={openFile} onSearch={oqera.workspace.search} onNewFile={()=>newAtRoot("newFile")} onNewFolder={()=>newAtRoot("newFolder")} onRefresh={()=>void refreshWorkspace()}/>:null}
+
+    <section className="bottom"><div className="bottom-tabs"><span className="active">{t.terminal}</span><span>{t.problems}</span><span>{t.output}</span><span>{t.tests}</span></div>{workspace?<TerminalPanel workspaceKey={workspace.root}/>:<div className="terminal">$ <span className="muted">Open a project to start the terminal.</span></div>}</section>
     <footer className="status"><span>⎇ main</span><span>✓ 0</span>{activeTab ? <span>{dirty ? "● Modified" : "Saved"}</span> : null}<span className="grow"/><span>{activeTab?.path ?? "Oqera 0.2.0"}</span></footer>
   </main>;
 }
@@ -194,4 +207,4 @@ export function App() {
 function Modal({ children, onBackdrop }: { children: React.ReactNode; onBackdrop: () => void }) {
   return <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onBackdrop(); }}><div className="save-dialog" role="dialog" aria-modal="true">{children}</div></div>;
 }
-function Tool({ label, children }: { label:string; children:React.ReactNode }) { return <button className="tool" title={label} aria-label={label}>{children}</button>; }
+function Tool({ label, children, onClick }: { label:string; children:React.ReactNode; onClick?:()=>void }) { return <button className="tool" title={label} aria-label={label} onClick={onClick}>{children}</button>; }
