@@ -161,7 +161,7 @@ export function App() {
       <aside className="sidebar">
         <div className="panel-heading">
           <span>{workspace?.name.toUpperCase() ?? t.project}</span>
-          {workspace ? <div className="explorer-actions"><button onClick={() => newAtRoot("newFile")} title="New File" aria-label="New File"><NewFileIcon/></button><button onClick={() => newAtRoot("newFolder")} title="New Folder" aria-label="New Folder"><NewFolderIcon/></button><button onClick={() => void refreshWorkspace()} title="Refresh" aria-label="Refresh"><RefreshIcon/></button></div> : null}
+          {workspace ? <div className="explorer-actions"><button type="button" onMouseDown={(e)=>e.preventDefault()} onClick={(e) => { e.stopPropagation(); newAtRoot("newFile"); }} title="New File" aria-label="New File"><NewFileIcon/></button><button type="button" onMouseDown={(e)=>e.preventDefault()} onClick={(e) => { e.stopPropagation(); newAtRoot("newFolder"); }} title="New Folder" aria-label="New Folder"><NewFolderIcon/></button><button onClick={() => void refreshWorkspace()} title="Refresh" aria-label="Refresh"><RefreshIcon/></button></div> : null}
         </div>
         {workspace ? <FileTree nodes={workspace.entries} onOpen={openFile} onAction={explorerAction}/> : <div className="empty-side"><ProjectIcon/><span>{t.empty}</span><button onClick={openWorkspace} disabled={busy}>{busy ? t.opening : t.open}</button></div>}
       </aside>
