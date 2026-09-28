@@ -19,6 +19,6 @@ export const oqera={
  },
  terminal:{
   start:(onData:(data:string)=>void)=>{const channel=new Channel<string>();channel.onmessage=onData;return invoke<number>("terminal_start",{onData:channel})},
-  write:(id:number,data:string)=>invoke<void>("terminal_write",{id,data}),
+  write:(id:number,data:string)=>invoke<void>("terminal_write",{id,data}),\n  resize:(id:number,cols:number,rows:number)=>invoke<void>("terminal_resize",{id,cols,rows}),\n  close:(id:number)=>invoke<void>("terminal_close",{id}),
  }
 };
