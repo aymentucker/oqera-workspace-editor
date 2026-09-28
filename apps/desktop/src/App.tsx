@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { OqeraIcon, ProjectIcon, SearchIcon, GitIcon, IntelligenceIcon, TerminalIcon, SettingsIcon, CloseIcon } from "./icons";
 import { FileTree } from "./components/explorer/FileTree";
 import { CodeEditor } from "./components/editor/CodeEditor";
@@ -14,9 +14,8 @@ export function App(){
  const dirty=activeTab?activeTab.content!==activeTab.savedContent:false;
  async function openWorkspace(){setBusy(true);setError(null);try{const next=await oqera.workspace.open();if(next){setWorkspace(next);setTabs([]);setActive(null)}}catch(e){setError(String(e))}finally{setBusy(false)}}
  async function openFile(node:FileNode){if(node.kind!=="file")return;const existing=tabs.find(x=>x.path===node.path);if(existing){setActive(node.path);return}setError(null);try{const content=await oqera.fs.readFile(node.path);setTabs(old=>[...old,{path:node.path,name:node.name,content,savedContent:content}]);setActive(node.path)}catch(e){setError(String(e))}}
- async function save(){if(!activeTab||!dirty)return;setError(null);try{await oqera.fs.writeFile(activeTab.path,activeTab.content);setTabs(old=>old.map(x=>x.path===activeTab.path?{...x,savedContent:x.content}:x))}catch(e){setError(String(e))}}
+ async function save(contentOverride?:string){if(!activeTab)return;const content=contentOverride??activeTab.content;if(content===activeTab.savedContent)return;setError(null);try{await oqera.fs.writeFile(activeTab.path,content);setTabs(old=>old.map(x=>x.path===activeTab.path?{...x,content,savedContent:content}:x))}catch(e){setError(String(e))}}
  function closeTab(path:string){setTabs(old=>{const index=old.findIndex(x=>x.path===path),next=old.filter(x=>x.path!==path);if(active===path)setActive(next[Math.min(index,next.length-1)]?.path??null);return next})}
- useEffect(()=>{const key=(e:KeyboardEvent)=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="s"){e.preventDefault();void save()}};window.addEventListener("keydown",key);return()=>window.removeEventListener("keydown",key)});
  return <main className="app" dir={rtl?"rtl":"ltr"}>
  <header className="titlebar"><div className="brand"><OqeraIcon/><strong>OQERA</strong></div><div className="project-title">{workspace?.name??"Oqera Workspace"}{dirty?" •":""}</div><div className="title-actions"><button className="locale" onClick={()=>setLocale(rtl?"en":"ar")}>{rtl?"EN":"عربي"}</button><button className="icon-button" aria-label={t.settings}><SettingsIcon/></button></div></header>
  <section className="workspace"><nav className="activitybar"><Tool label={t.explorer}><ProjectIcon/></Tool><Tool label={t.search}><SearchIcon/></Tool><Tool label={t.git}><GitIcon/></Tool><Tool label={t.intelligence}><IntelligenceIcon/></Tool><Tool label={t.runtime}><TerminalIcon/></Tool></nav>
