@@ -8,3 +8,7 @@ export const GitIcon=(p:P)=><S {...p}><circle cx="7" cy="5" r="2"/><circle cx="1
 export const IntelligenceIcon=(p:P)=><S {...p}><path d="m12 2 1.8 5.1L19 9l-5.2 1.9L12 16l-1.8-5.1L5 9l5.2-1.9z"/><path d="m18.5 15 .8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></S>;
 export const TerminalIcon=(p:P)=><S {...p}><path d="m4 6 5 5-5 5"/><path d="M11.5 18H20"/></S>;
 export const SettingsIcon=(p:P)=><S {...p}><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/></S>;
+export const ChevronIcon=(p:P)=><S size={14} {...p}><path d="m9 6 6 6-6 6"/></S>;
+export const CloseIcon=(p:P)=><S size={14} {...p}><path d="m7 7 10 10M17 7 7 17"/></S>;
+export const FolderIcon=({open=false,...p}:P&{open?:boolean})=><S size={16} {...p}><path d={open?"M3.5 8.5h17l-2 10h-13z":"M3.5 6.5h6l2 2h9v10h-17z"}/></S>;
+export const FileIcon=({name,...p}:P&{name?:string})=><S size={15} {...p}><path d="M6 3.5h8l4 4v13H6z"/><path d="M14 3.5v4h4"/>{name?.endsWith(".tsx")||name?.endsWith(".ts")?<path d="M8.5 14h7"/>:null}</S>;
