@@ -1,0 +1,10 @@
+import type { SVGProps } from "react";
+type P=SVGProps<SVGSVGElement>&{size?:number};
+const S=({size=20,children,...p}:P)=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...p}>{children}</svg>;
+export const OqeraIcon=(p:P)=><S {...p}><path d="M12 3.2a8.8 8.8 0 1 0 6.2 15"/><path d="M16.2 15.8 21 20.6"/><path d="M15.8 8.2 19 12l-3.2 3.8"/></S>;
+export const ProjectIcon=(p:P)=><S {...p}><path d="M3.5 6.8h6l1.8 2h9.2v9.7a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/><path d="M3.5 9h17"/></S>;
+export const SearchIcon=(p:P)=><S {...p}><circle cx="10.7" cy="10.7" r="6.2"/><path d="m15.4 15.4 5 5"/></S>;
+export const GitIcon=(p:P)=><S {...p}><circle cx="7" cy="5" r="2"/><circle cx="17" cy="19" r="2"/><circle cx="7" cy="19" r="2"/><path d="M7 7v10M9 7c0 5 8 3 8 10"/></S>;
+export const IntelligenceIcon=(p:P)=><S {...p}><path d="m12 2 1.8 5.1L19 9l-5.2 1.9L12 16l-1.8-5.1L5 9l5.2-1.9z"/><path d="m18.5 15 .8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></S>;
+export const TerminalIcon=(p:P)=><S {...p}><path d="m4 6 5 5-5 5"/><path d="M11.5 18H20"/></S>;
+export const SettingsIcon=(p:P)=><S {...p}><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/></S>;
