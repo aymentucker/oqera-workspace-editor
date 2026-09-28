@@ -1,0 +1,1 @@
+{"name":"oqera-workspace-editor","private":true,"version":"0.1.0","workspaces":["apps/*","packages/*"],"scripts":{"dev":"npm run dev -w @oqera/desktop","tauri":"npm run tauri -w @oqera/desktop","build":"npm run build -w @oqera/desktop","typecheck":"npm run typecheck -w @oqera/desktop"}}
