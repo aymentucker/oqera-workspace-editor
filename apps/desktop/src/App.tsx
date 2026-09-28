@@ -1,0 +1,13 @@
+import { useState } from "react";
+import { OqeraIcon, ProjectIcon, SearchIcon, GitIcon, IntelligenceIcon, TerminalIcon, SettingsIcon } from "./icons";
+
+type Locale="en"|"ar";
+const copy={en:{project:"PROJECT",explorer:"Explorer",search:"Search",git:"Source Control",intelligence:"Intelligence",runtime:"Runtime",terminal:"TERMINAL",problems:"PROBLEMS",output:"OUTPUT",tests:"TESTS",empty:"Open a project to start building.",open:"Open Project",settings:"Settings"},ar:{project:"المشروع",explorer:"المستكشف",search:"البحث",git:"التحكم بالمصدر",intelligence:"الذكاء",runtime:"التشغيل",terminal:"الطرفية",problems:"المشكلات",output:"المخرجات",tests:"الاختبارات",empty:"افتح مشروعًا لبدء العمل.",open:"فتح مشروع",settings:"الإعدادات"}} as const;
+export function App(){const [locale,setLocale]=useState<Locale>("en");const t=copy[locale];const rtl=locale==="ar";return <main className="app" dir={rtl?"rtl":"ltr"}>
+<header className="titlebar"><div className="brand"><OqeraIcon/><strong>OQERA</strong></div><div className="project-title">Oqera Workspace</div><div className="title-actions"><button className="locale" onClick={()=>setLocale(rtl?"en":"ar")}>{rtl?"EN":"عربي"}</button><button className="icon-button" aria-label={t.settings}><SettingsIcon/></button></div></header>
+<section className="workspace"><nav className="activitybar" aria-label="Workspace tools"><Tool label={t.explorer}><ProjectIcon/></Tool><Tool label={t.search}><SearchIcon/></Tool><Tool label={t.git}><GitIcon/></Tool><Tool label={t.intelligence}><IntelligenceIcon/></Tool><Tool label={t.runtime}><TerminalIcon/></Tool></nav>
+<aside className="sidebar"><div className="panel-heading">{t.project}</div><div className="empty-side"><ProjectIcon/><span>{t.empty}</span><button>{t.open}</button></div></aside>
+<section className="editor"><div className="editor-tabs"><div className="tab active">Welcome</div></div><div className="welcome"><OqeraIcon size={54}/><h1>Oqera</h1><p>{t.empty}</p><button className="primary">{t.open}</button><div className="hint"><kbd>⌘</kbd><kbd>K</kbd><span>Command Center</span></div></div></section></section>
+<section className="bottom"><div className="bottom-tabs"><span className="active">{t.terminal}</span><span>{t.problems}</span><span>{t.output}</span><span>{t.tests}</span></div><div className="terminal">$ <span className="muted">Oqera terminal will appear here.</span></div></section>
+<footer className="status"><span>⎇ main</span><span>✓ 0</span><span className="grow"/><span>Oqera 0.1.0</span></footer></main>}
+function Tool({label,children}:{label:string;children:React.ReactNode}){return <button className="tool" title={label} aria-label={label}>{children}</button>}
